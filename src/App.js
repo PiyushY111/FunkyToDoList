@@ -1,4 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
+import { FeatureProvider } from './features/FeatureContext';
+import FeatureLayout from './features/FeatureLayout';
+import MoodSelector from './features/MoodSelector';
+import GachaSystem from './features/GachaSystem';
+import DoomMode from './features/DoomMode';
+import LifeStats from './features/LifeStats';
+import MiniCalendar from './features/MiniCalendar';
 
 // Simple custom icon components instead of using lucide-react
 const IconSparkle = () => (
@@ -70,16 +77,29 @@ const CrazyTodoApp = () => {
 
   // Random color generator
   const randomColor = () => {
-    return "#" + Math.floor(Math.random()*16777215).toString(16);
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
   };
 
-  // Toggle colors randomly
+  // Toggle colors randomly with better color combinations
   const toggleCrazyColors = () => {
+    const newBg = randomColor();
+    const newAccent = randomColor();
+    const newCardBg = randomColor();
+    
     setColors({
-      bg: randomColor(),
-      accent: randomColor(),
-      cardBg: randomColor()
+      bg: newBg,
+      accent: newAccent,
+      cardBg: newCardBg
     });
+    
+    // Update document background
+    document.body.style.background = `linear-gradient(45deg, ${newBg}, ${newCardBg})`;
+    
     setShake(true);
     setTimeout(() => setShake(false), 500);
   };
@@ -197,13 +217,63 @@ const CrazyTodoApp = () => {
     }, 300);
   };
 
-  // Toggle crazy mode
+  // Toggle crazy mode with global effects
   const toggleCrazyMode = () => {
     setCrazyMode(!crazyMode);
     if (!crazyMode) {
       explodeTasks();
+      // Add global crazy mode effects
+      document.body.style.animation = 'crazyMode 2s infinite';
+      document.body.style.fontFamily = "'Comic Sans MS', cursive, sans-serif";
+    } else {
+      // Remove global crazy mode effects
+      document.body.style.animation = 'none';
+      document.body.style.fontFamily = "'Comic Sans MS', cursive, sans-serif";
     }
   };
+
+  // Add global styles for crazy mode
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes crazyMode {
+        0% { transform: rotate(0deg); }
+        25% { transform: rotate(1deg); }
+        50% { transform: rotate(0deg); }
+        75% { transform: rotate(-1deg); }
+        100% { transform: rotate(0deg); }
+      }
+      
+      .crazy-mode-active {
+        animation: crazyMode 2s infinite;
+      }
+      
+      .crazy-mode-active * {
+        transition: all 0.3s ease;
+      }
+      
+      .crazy-mode-active button:hover {
+        transform: scale(1.1) rotate(5deg);
+      }
+      
+      .crazy-mode-active input:focus {
+        transform: scale(1.02);
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  // Apply crazy mode class to body
+  useEffect(() => {
+    if (crazyMode) {
+      document.body.classList.add('crazy-mode-active');
+    } else {
+      document.body.classList.remove('crazy-mode-active');
+    }
+  }, [crazyMode]);
 
   // Custom animation classes
   const crazyStyles = {
@@ -369,325 +439,409 @@ const CrazyTodoApp = () => {
   }
 
   return (
-    <div style={crazyStyles.app} ref={appRef}>
-      <header style={crazyStyles.header}>
-        <div style={crazyStyles.titleContainer}>
-          <h1 style={crazyStyles.title}>
-            CRAZY TASKS
-            <span style={{ marginLeft: "8px", color: crazyMode ? randomColor() : "#ffcc00" }}>
-              <IconSparkle />
-            </span>
-          </h1>
-          <p style={crazyStyles.subtitle}>Where organization meets chaos!</p>
-        </div>
-        
-        <div style={crazyStyles.inputContainer}>
-          <input 
-            type="text" 
-            value={newTask} 
-            onChange={(e) => setNewTask(e.target.value)} 
-            placeholder="Add a wild new task"
-            style={crazyStyles.input}
-          />
-          <button 
-            onClick={addTask} 
-            style={crazyStyles.addButton}
-          >
-            <span style={crazyStyles.icon}><IconPlus /></span>
-            <span>Add</span>
-          </button>
-        </div>
-        
-        <button 
-          onClick={toggleCrazyColors} 
-          style={crazyStyles.randomizeButton}
-        >
-          Randomize Colors!
-        </button>
-        
-        <button 
-          onClick={explodeTasks} 
-          disabled={isExploding || tasks.length === 0}
-          style={{
-            ...crazyStyles.explodeButton,
-            opacity: isExploding || tasks.length === 0 ? 0.6 : 1
-          }}
-        >
-          <span style={{...crazyStyles.icon, marginRight: "4px"}}>
-            <IconBomb />
-          </span>
-          EXPLODE TASKS!
-        </button>
-        
-        <button 
-          onClick={toggleCrazyMode} 
-          style={crazyStyles.crazyModeToggle}
-        >
-          {crazyMode ? "DISABLE CRAZY MODE" : "ENABLE CRAZY MODE"}
-        </button>
-      </header>
-      
-      <div style={crazyStyles.columnsContainer}>
-        {/* Pending Tasks */}
+    <FeatureProvider>
+      <FeatureLayout>
+        {/* Centered Mini Calendar at the top */}
         <div style={{
-          ...crazyStyles.column,
-          background: `linear-gradient(135deg, ${colors.cardBg}, #660066)`,
-          transform: crazyMode ? `rotate(${Math.sin(Date.now() / 1000) * 3}deg)` : "none",
-          transition: "transform 0.5s ease"
+          gridColumn: '1 / -1',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginBottom: '32px',
         }}>
-          <h2 style={crazyStyles.columnTitle}>
-            <span style={{...crazyStyles.icon, color: "#ffcc00"}}><IconZap /></span>
-            Pending
-          </h2>
-          <ul style={crazyStyles.taskList}>
-            {tasks.filter(task => !task.completed).map(task => (
-              <li key={task.id} 
-                style={{ 
-                  padding: "12px",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                  background: `linear-gradient(90deg, #330066, ${task.color})`,
-                  transform: `rotate(${task.rotate}deg) ${crazyMode ? `scale(${0.9 + Math.sin(Date.now() / 1000 + task.id) * 0.1})` : ''}`,
-                  boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-                  transition: "all 0.3s",
-                  animation: task.bouncy ? "bounce 1s infinite" : "none"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <button 
-                      onClick={() => toggleTask(task.id)}
-                      style={{ 
-                        width: "24px", 
-                        height: "24px", 
-                        borderRadius: "50%", 
-                        border: "2px solid #b19cd9",
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center", 
-                        marginRight: "12px",
-                        background: "transparent"
-                      }}
-                    />
-                    <span 
-                      style={{ 
-                        fontSize: `${task.fontSize}px`,
-                        color: crazyMode ? randomColor() : "white",
-                        textShadow: "0 0 5px rgba(255,255,255,0.5)"
-                      }}
-                    >
-                      {task.text}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={() => deleteTask(task.id)}
-                    style={{ color: "#ff6666", background: "none", border: "none" }}
-                  >
-                    <span style={crazyStyles.icon}><IconTrash /></span>
-                  </button>
-                </div>
-              </li>
-            ))}
-            {tasks.filter(task => !task.completed).length === 0 && (
-              <li style={crazyStyles.emptyText}>No pending tasks</li>
-            )}
-          </ul>
+          <MiniCalendar />
         </div>
-        
-        {/* Completed Tasks */}
         <div style={{
-          ...crazyStyles.column,
-          background: `linear-gradient(135deg, ${colors.cardBg}, #006666)`,
-          transform: crazyMode ? `rotate(${Math.sin(Date.now() / 1000 + 2) * 3}deg)` : "none",
-          transition: "transform 0.5s ease"
+          gridColumn: '1 / -1',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px',
+          padding: '20px',
+          background: 'rgba(0, 0, 0, 0.2)',
+          borderRadius: '12px',
+          backdropFilter: 'blur(10px)'
         }}>
-          <h2 style={crazyStyles.columnTitle}>
-            <span style={{...crazyStyles.icon, color: "#33cc33"}}><IconCheck /></span>
-            Completed
-          </h2>
-          <ul style={crazyStyles.taskList}>
-            {tasks.filter(task => task.completed).map(task => (
-              <li key={task.id} 
-                style={{ 
-                  padding: "12px",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                  background: `linear-gradient(90deg, #003366, ${task.color})`,
-                  transform: `rotate(${task.rotate}deg) ${crazyMode ? `scale(${0.9 + Math.sin(Date.now() / 1000 + task.id) * 0.1})` : ''}`,
-                  boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-                  opacity: 0.8,
-                  transition: "all 0.3s",
-                  animation: task.bouncy ? "bounce 1s infinite" : "none"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    <button 
-                      onClick={() => toggleTask(task.id)}
-                      style={{ 
-                        width: "24px", 
-                        height: "24px", 
-                        borderRadius: "50%", 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center", 
-                        marginRight: "12px",
-                        background: "#33cc33"
-                      }}
-                    >
-                      <span style={{...crazyStyles.iconSmall, color: "white"}}>
-                        <IconCheck />
+          <div style={crazyStyles.inputContainer}>
+            <input 
+              type="text" 
+              value={newTask} 
+              onChange={(e) => setNewTask(e.target.value)} 
+              placeholder="Add a wild new task"
+              style={crazyStyles.input}
+            />
+            <button 
+              onClick={addTask} 
+              style={crazyStyles.addButton}
+            >
+              <span style={crazyStyles.icon}><IconPlus /></span>
+              <span>Add</span>
+            </button>
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            gap: '10px',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button 
+              onClick={explodeTasks} 
+              disabled={isExploding || tasks.length === 0}
+              style={{
+                ...crazyStyles.explodeButton,
+                opacity: isExploding || tasks.length === 0 ? 0.6 : 1
+              }}
+            >
+              <span style={{...crazyStyles.icon, marginRight: "4px"}}>
+                <IconBomb />
+              </span>
+              EXPLODE TASKS!
+            </button>
+            
+            <button 
+              onClick={toggleCrazyMode} 
+              style={crazyStyles.crazyModeToggle}
+            >
+              {crazyMode ? "DISABLE CRAZY MODE" : "ENABLE CRAZY MODE"}
+            </button>
+          </div>
+        </div>
+        <MoodSelector />
+        <GachaSystem />
+        <DoomMode />
+        
+        <div style={{
+          gridColumn: '1 / -1',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '20px',
+          padding: '20px',
+          background: 'rgba(0, 0, 0, 0.2)',
+          borderRadius: '12px',
+          backdropFilter: 'blur(10px)'
+        }}>
+          {/* Pending Tasks */}
+          <div style={{
+            ...crazyStyles.column,
+            background: `linear-gradient(135deg, ${colors.cardBg}, #660066)`,
+            transform: crazyMode ? `rotate(${Math.sin(Date.now() / 1000) * 3}deg)` : "none",
+            transition: "transform 0.5s ease"
+          }}>
+            <h2 style={crazyStyles.columnTitle}>
+              <span style={{...crazyStyles.icon, color: "#ffcc00"}}><IconZap /></span>
+              Pending
+            </h2>
+            <ul style={crazyStyles.taskList}>
+              {tasks.filter(task => !task.completed).map(task => (
+                <li key={task.id} 
+                  style={{ 
+                    padding: "12px",
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    background: `linear-gradient(90deg, #330066, ${task.color})`,
+                    transform: `rotate(${task.rotate}deg) ${crazyMode ? `scale(${0.9 + Math.sin(Date.now() / 1000 + task.id) * 0.1})` : ''}`,
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+                    transition: "all 0.3s",
+                    animation: task.bouncy ? "bounce 1s infinite" : "none",
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => toggleTask(task.id)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTask(task.id);
+                        }}
+                        style={{ 
+                          width: "24px", 
+                          height: "24px", 
+                          borderRadius: "50%", 
+                          border: "2px solid #b19cd9",
+                          display: "flex", 
+                          alignItems: "center", 
+                          justifyContent: "center", 
+                          marginRight: "12px",
+                          background: "transparent",
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <span 
+                        style={{ 
+                          fontSize: `${task.fontSize}px`,
+                          color: crazyMode ? randomColor() : "white",
+                          textShadow: "0 0 5px rgba(255,255,255,0.5)"
+                        }}
+                      >
+                        {task.text}
                       </span>
-                    </button>
-                    <span 
-                      style={{ 
-                        fontSize: `${task.fontSize}px`,
-                        color: crazyMode ? randomColor() : "white",
-                        textDecoration: "line-through",
-                        textShadow: "0 0 5px rgba(255,255,255,0.5)"
-                      }}
-                    >
-                      {task.text}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={() => deleteTask(task.id)}
-                    style={{ color: "#ff6666", background: "none", border: "none" }}
-                  >
-                    <span style={crazyStyles.icon}><IconTrash /></span>
-                  </button>
-                </div>
-              </li>
-            ))}
-            {tasks.filter(task => task.completed).length === 0 && (
-              <li style={crazyStyles.emptyText}>No completed tasks</li>
-            )}
-          </ul>
-        </div>
-        
-        {/* All Tasks */}
-        <div style={{
-          ...crazyStyles.column,
-          background: `linear-gradient(135deg, ${colors.cardBg}, #660033)`,
-          transform: crazyMode ? `rotate(${Math.sin(Date.now() / 1000 + 4) * 3}deg)` : "none",
-          transition: "transform 0.5s ease"
-        }}>
-          <h2 style={crazyStyles.columnTitle}>
-            <span style={{...crazyStyles.icon, color: "#ffcc00"}}><IconSparkle /></span>
-            All Tasks
-          </h2>
-          <ul style={crazyStyles.taskList}>
-            {tasks.map(task => (
-              <li key={task.id} 
-                style={{ 
-                  padding: "12px",
-                  borderRadius: "8px",
-                  marginBottom: "12px",
-                  background: `linear-gradient(90deg, #4d0033, ${task.color})`,
-                  transform: `rotate(${task.rotate}deg) ${crazyMode ? `scale(${0.9 + Math.sin(Date.now() / 1000 + task.id) * 0.1})` : ''}`,
-                  boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-                  transition: "all 0.3s",
-                  animation: task.bouncy ? "bounce 1s infinite" : "none"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center" }}>
+                    </div>
                     <button 
-                      onClick={() => toggleTask(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteTask(task.id);
+                      }}
                       style={{ 
-                        width: "24px", 
-                        height: "24px", 
-                        borderRadius: "50%", 
-                        border: task.completed ? "none" : "2px solid #b19cd9",
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center", 
-                        marginRight: "12px",
-                        background: task.completed ? "#33cc33" : "transparent"
+                        color: "#ff6666", 
+                        background: "none", 
+                        border: "none",
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s',
+                        ':hover': {
+                          background: 'rgba(255, 102, 102, 0.1)'
+                        }
                       }}
                     >
-                      {task.completed && (
+                      <span style={crazyStyles.icon}><IconTrash /></span>
+                    </button>
+                  </div>
+                </li>
+              ))}
+              {tasks.filter(task => !task.completed).length === 0 && (
+                <li style={crazyStyles.emptyText}>No pending tasks</li>
+              )}
+            </ul>
+          </div>
+          
+          {/* Completed Tasks */}
+          <div style={{
+            ...crazyStyles.column,
+            background: `linear-gradient(135deg, ${colors.cardBg}, #006666)`,
+            transform: crazyMode ? `rotate(${Math.sin(Date.now() / 1000 + 2) * 3}deg)` : "none",
+            transition: "transform 0.5s ease"
+          }}>
+            <h2 style={crazyStyles.columnTitle}>
+              <span style={{...crazyStyles.icon, color: "#33cc33"}}><IconCheck /></span>
+              Completed
+            </h2>
+            <ul style={crazyStyles.taskList}>
+              {tasks.filter(task => task.completed).map(task => (
+                <li key={task.id} 
+                  style={{ 
+                    padding: "12px",
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    background: `linear-gradient(90deg, #003366, ${task.color})`,
+                    transform: `rotate(${task.rotate}deg) ${crazyMode ? `scale(${0.9 + Math.sin(Date.now() / 1000 + task.id) * 0.1})` : ''}`,
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+                    opacity: 0.8,
+                    transition: "all 0.3s",
+                    animation: task.bouncy ? "bounce 1s infinite" : "none",
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => toggleTask(task.id)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTask(task.id);
+                        }}
+                        style={{ 
+                          width: "24px", 
+                          height: "24px", 
+                          borderRadius: "50%", 
+                          display: "flex", 
+                          alignItems: "center", 
+                          justifyContent: "center", 
+                          marginRight: "12px",
+                          background: "#33cc33",
+                          cursor: 'pointer'
+                        }}
+                      >
                         <span style={{...crazyStyles.iconSmall, color: "white"}}>
                           <IconCheck />
                         </span>
-                      )}
-                    </button>
-                    <span 
+                      </button>
+                      <span 
+                        style={{ 
+                          fontSize: `${task.fontSize}px`,
+                          color: crazyMode ? randomColor() : "white",
+                          textDecoration: "line-through",
+                          textShadow: "0 0 5px rgba(255,255,255,0.5)"
+                        }}
+                      >
+                        {task.text}
+                      </span>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteTask(task.id);
+                      }}
                       style={{ 
-                        fontSize: `${task.fontSize}px`,
-                        color: crazyMode ? randomColor() : "white",
-                        textDecoration: task.completed ? "line-through" : "none",
-                        textShadow: "0 0 5px rgba(255,255,255,0.5)"
+                        color: "#ff6666", 
+                        background: "none", 
+                        border: "none",
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s',
+                        ':hover': {
+                          background: 'rgba(255, 102, 102, 0.1)'
+                        }
                       }}
                     >
-                      {task.text}
-                    </span>
+                      <span style={crazyStyles.icon}><IconTrash /></span>
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => deleteTask(task.id)}
-                    style={{ color: "#ff6666", background: "none", border: "none" }}
-                  >
-                    <span style={crazyStyles.icon}><IconTrash /></span>
-                  </button>
-                </div>
-              </li>
-            ))}
-            {tasks.length === 0 && (
-              <li style={crazyStyles.emptyText}>No tasks yet</li>
-            )}
-          </ul>
+                </li>
+              ))}
+              {tasks.filter(task => task.completed).length === 0 && (
+                <li style={crazyStyles.emptyText}>No completed tasks</li>
+              )}
+            </ul>
+          </div>
+          
+          {/* All Tasks */}
+          <div style={{
+            ...crazyStyles.column,
+            background: `linear-gradient(135deg, ${colors.cardBg}, #660033)`,
+            transform: crazyMode ? `rotate(${Math.sin(Date.now() / 1000 + 4) * 3}deg)` : "none",
+            transition: "transform 0.5s ease"
+          }}>
+            <h2 style={crazyStyles.columnTitle}>
+              <span style={{...crazyStyles.icon, color: "#ffcc00"}}><IconSparkle /></span>
+              All Tasks
+            </h2>
+            <ul style={crazyStyles.taskList}>
+              {tasks.map(task => (
+                <li key={task.id} 
+                  style={{ 
+                    padding: "12px",
+                    borderRadius: "8px",
+                    marginBottom: "12px",
+                    background: `linear-gradient(90deg, #4d0033, ${task.color})`,
+                    transform: `rotate(${task.rotate}deg) ${crazyMode ? `scale(${0.9 + Math.sin(Date.now() / 1000 + task.id) * 0.1})` : ''}`,
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+                    transition: "all 0.3s",
+                    animation: task.bouncy ? "bounce 1s infinite" : "none",
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => toggleTask(task.id)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTask(task.id);
+                        }}
+                        style={{ 
+                          width: "24px", 
+                          height: "24px", 
+                          borderRadius: "50%", 
+                          border: task.completed ? "none" : "2px solid #b19cd9",
+                          display: "flex", 
+                          alignItems: "center", 
+                          justifyContent: "center", 
+                          marginRight: "12px",
+                          background: task.completed ? "#33cc33" : "transparent",
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {task.completed && (
+                          <span style={{...crazyStyles.iconSmall, color: "white"}}>
+                            <IconCheck />
+                          </span>
+                        )}
+                      </button>
+                      <span 
+                        style={{ 
+                          fontSize: `${task.fontSize}px`,
+                          color: crazyMode ? randomColor() : "white",
+                          textDecoration: task.completed ? "line-through" : "none",
+                          textShadow: "0 0 5px rgba(255,255,255,0.5)"
+                        }}
+                      >
+                        {task.text}
+                      </span>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteTask(task.id);
+                      }}
+                      style={{ 
+                        color: "#ff6666", 
+                        background: "none", 
+                        border: "none",
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s',
+                        ':hover': {
+                          background: 'rgba(255, 102, 102, 0.1)'
+                        }
+                      }}
+                    >
+                      <span style={crazyStyles.icon}><IconTrash /></span>
+                    </button>
+                  </div>
+                </li>
+              ))}
+              {tasks.length === 0 && (
+                <li style={crazyStyles.emptyText}>No tasks yet</li>
+              )}
+            </ul>
+          </div>
         </div>
-      </div>
-      
-      {/* Floating/Exploding Tasks */}
-      {floatingTasks.map(task => (
-        <div
-          key={`floating-${task.id}`}
-          style={{
-            ...crazyStyles.floatingTask,
-            left: `${task.position.x}px`,
-            top: `${task.position.y}px`,
-            transform: `rotate(${task.rotation}deg) scale(${task.scale})`,
-            opacity: task.opacity,
-            background: `linear-gradient(90deg, ${task.color}, ${randomColor()})`,
-            transition: "none",
-            padding: "8px 12px",
-            boxShadow: `0 0 20px ${task.color}`,
-            color: "white",
-            zIndex: 1000,
-            fontSize: `${task.fontSize}px`,
-            textDecoration: task.completed ? "line-through" : "none"
-          }}
-        >
-          {task.text}
-        </div>
-      ))}
+        
+        {/* Floating/Exploding Tasks */}
+        {floatingTasks.map(task => (
+          <div
+            key={`floating-${task.id}`}
+            style={{
+              ...crazyStyles.floatingTask,
+              left: `${task.position.x}px`,
+              top: `${task.position.y}px`,
+              transform: `rotate(${task.rotation}deg) scale(${task.scale})`,
+              opacity: task.opacity,
+              background: `linear-gradient(90deg, ${task.color}, ${randomColor()})`,
+              transition: "none",
+              padding: "8px 12px",
+              boxShadow: `0 0 20px ${task.color}`,
+              color: "white",
+              zIndex: 1000,
+              fontSize: `${task.fontSize}px`,
+              textDecoration: task.completed ? "line-through" : "none",
+              pointerEvents: 'none'
+            }}
+          >
+            {task.text}
+          </div>
+        ))}
 
-      {/* Add CSS animations */}
-      <style>
-        {`
-          @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-          }
-          @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.1); }
-            100% { opacity: 1; transform: scale(1); }
-          }
-          @keyframes rainbow {
-            0% { color: red; }
-            14% { color: orange; }
-            28% { color: yellow; }
-            42% { color: green; }
-            57% { color: blue; }
-            71% { color: indigo; }
-            85% { color: violet; }
-            100% { color: red; }
-          }
-        `}
-      </style>
-    </div>
+        {/* Add CSS animations */}
+        <style>
+          {`
+            @keyframes bounce {
+              0%, 100% { transform: translateY(0); }
+              50% { transform: translateY(-10px); }
+            }
+            @keyframes pulse {
+              0% { opacity: 1; transform: scale(1); }
+              50% { opacity: 0.8; transform: scale(1.1); }
+              100% { opacity: 1; transform: scale(1); }
+            }
+            @keyframes rainbow {
+              0% { color: red; }
+              14% { color: orange; }
+              28% { color: yellow; }
+              42% { color: green; }
+              57% { color: blue; }
+              71% { color: indigo; }
+              85% { color: violet; }
+              100% { color: red; }
+            }
+          `}
+        </style>
+      </FeatureLayout>
+    </FeatureProvider>
   );
 };
 
